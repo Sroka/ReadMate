@@ -1,0 +1,35 @@
+[package]
+authors = ["Maciej Srokowski <maciej@srokowski.pl>"]
+edition = "2021"
+homepage = "https://gitlab.com/andybalaam/example-rust-bindings-rust"
+repository = "https://gitlab.com/andybalaam/example-rust-bindings-rust"
+description = "Cross platform PDF reader"
+license = "MIT"
+name = "read_mate"
+version = "0.1.0"
+rust-version = "1.60"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# Keep the uniffi version here in sync with the installed version of
+# uniffi-bindgen that is called from
+# ../../app/android/app/build.gradle
+pdfium-render = { version = "0.7.34", features = ["thread_safe", "sync"] }
+uniffi = "0.22.0"
+uniffi_macros = "0.22.0"
+log = "0.4.17"
+anyhow = "1.0.71"
+[dependencies.uuid]
+version = "1.3.2"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.13.1"
+
+[build-dependencies]
+uniffi_build = { version = "0.22.0", features = ["builtin-bindgen"] }

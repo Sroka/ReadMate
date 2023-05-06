@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Super PDF Reader</string>
+    <string name="empty_library_message">Add some books</string>
+</resources>

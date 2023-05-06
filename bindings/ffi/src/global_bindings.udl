@@ -1,0 +1,79 @@
+namespace global_bindings {
+
+};
+
+
+dictionary Pdf {
+    string uuid;
+};
+
+dictionary GlobalState {
+    string some_text;
+    sequence<Pdf> pdfs;
+};
+
+[Enum]
+interface GlobalThunk {
+    LoadPdf(sequence<u8> bytes);
+};
+
+[Enum]
+interface GlobalAction {
+    PdfLoading(string uuid);
+    PdfLoadingFailed(string uuid);
+    PdfLoaded(string uuid);
+};
+
+callback interface GlobalStateListener {
+    void new_state(GlobalState state);
+};
+
+interface GlobalStore {
+    constructor();
+    [Self=ByArc]
+    void init();
+    [Self=ByArc]
+    void dispatch_action(GlobalAction action);
+    [Self=ByArc]
+    void dispatch_thunk(GlobalThunk thunk);
+    void add_listener(string id, GlobalStateListener listener);
+    void remove_listener(string id);
+};
+
+
+dictionary BooksState {
+    string some_text;
+    sequence<Pdf> pdfs;
+};
+
+[Enum]
+interface BooksSideEffect {
+    OpenFilePicker();
+};
+
+[Enum]
+interface BooksThunk {
+    AddClicked();
+};
+
+[Enum]
+interface BooksAction {
+    PdfsListUpdated(sequence<Pdf> pdfs);
+};
+
+callback interface BooksStateListener {
+    void new_state(BooksState state);
+    void new_side_effect(BooksSideEffect side_effect);
+};
+
+interface BooksStore {
+    constructor(GlobalStore global_store);
+    [Self=ByArc]
+    void init();
+    [Self=ByArc]
+    void dispatch_thunk(BooksThunk thunk);
+    [Self=ByArc]
+    void dispatch_action(BooksAction action);
+    void add_listener(string id, BooksStateListener listener);
+    void remove_listener(string id);
+};
