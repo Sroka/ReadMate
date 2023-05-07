@@ -1,6 +1,8 @@
 package com.sroka.readmate.books
 
 import android.os.Bundle
+import android.os.Looper
+import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +14,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.sroka.readmate.IdentityId
 import com.sroka.readmate.R
 import com.sroka.readmate.books.placeholder.PlaceholderContent
+import kotlin.concurrent.thread
 import org.koin.android.ext.android.inject
 import org.koin.androidx.scope.ScopeFragment
 import uniffi.global_bindings.BooksSideEffect
@@ -37,11 +40,31 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
 
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { existingUri ->
-            requireActivity()
-                .contentResolver
-                .openInputStream(existingUri)
-                ?.use { it.readBytes() }
-                ?.let { globalStore.dispatchThunk(GlobalThunk.LoadPdf(it.toUByteArray().asList())) }
+            thread(true) {
+                val fileName = activity
+                    ?.contentResolver
+                    ?.query(existingUri, null, null, null, null)
+                    ?.use { cursor ->
+                        cursor
+                            .takeIf { it.moveToFirst() }
+                            ?.let { movedCursor ->
+                                movedCursor
+                                    .getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                    .takeIf { it >= 0 }
+                                    ?.let { movedCursor.getString(it) }
+                            }
+
+                    } ?: existingUri.lastPathSegment ?: "Unknown file name"
+
+                activity
+                    ?.contentResolver
+                    ?.openInputStream(existingUri)
+                    ?.use { it.readBytes() }
+                    ?.let {
+                        // Just to be sure that the fragment is not dead
+                        view?.post { globalStore.dispatchThunk(GlobalThunk.LoadPdf(fileName, it.toUByteArray().asList())) }
+                    }
+            }
         }
     }
 
@@ -69,7 +92,15 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
     }
 
     override fun newState(state: BooksState) {
-        println("New books state: $state")
+        if (Thread.currentThread() == Looper.getMainLooper().thread) {
+            render(state)
+        } else {
+            view?.post { render(state) }
+        }
+    }
+
+    private fun render(state: BooksState) {
+        println("New books state: ${Thread.currentThread().name} $state")
     }
 
     override fun newSideEffect(sideEffect: BooksSideEffect) {

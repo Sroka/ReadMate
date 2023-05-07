@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
+use pdfium_render::metadata::PdfDocumentMetadataTagType;
 use pdfium_render::prelude::{PdfDocument, Pdfium};
 use crate::global_state::{GlobalAction};
 
@@ -24,7 +25,7 @@ impl PdfiumManager {
             loop {
                 let action = action_receiver.recv().unwrap();
                 match action {
-                    PdfiumAction::LoadPdf { bytes } => {
+                    PdfiumAction::LoadPdf { file_name, bytes } => {
                         let pdf_uuid = Uuid::new_v4();
                         global_action_sender
                             .lock()
@@ -34,11 +35,30 @@ impl PdfiumManager {
                         let result = pdfium.load_pdf_from_byte_slice(Box::leak(Box::new(bytes)), None);
                         match result {
                             Ok(pdf) => {
+                                let metadata = pdf.metadata();
+                                let title = metadata
+                                    .get(PdfDocumentMetadataTagType::Title)
+                                    .map(|item| item.value().to_string())
+                                    .unwrap_or("".to_string());
+                                let author = metadata
+                                    .get(PdfDocumentMetadataTagType::Author)
+                                    .map(|item| item.value().to_string())
+                                    .unwrap_or("".to_string())
+                                    ;
+                                let display_title = if title.is_empty() {
+                                    file_name
+                                } else {
+                                    title
+                                };
                                 current_pdfium_document = Some(pdf);
                                 global_action_sender
                                     .lock()
                                     .unwrap()
-                                    .send(GlobalAction::PdfLoaded { uuid: pdf_uuid.to_string() })
+                                    .send(GlobalAction::PdfLoaded {
+                                        title: display_title,
+                                        author,
+                                        uuid: pdf_uuid.to_string(),
+                                    })
                                     .unwrap();
                             }
                             Err(_) => {
@@ -62,5 +82,5 @@ impl PdfiumManager {
 
 
 pub enum PdfiumAction {
-    LoadPdf { bytes: Vec<u8> }
+    LoadPdf { file_name: String, bytes: Vec<u8> }
 }

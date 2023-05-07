@@ -23,17 +23,23 @@ pub struct GlobalState {
 
 #[derive(Clone, PartialEq)]
 pub struct Pdf {
+    pub title: String,
+    pub author: String,
     pub uuid: String,
 }
 
 pub enum GlobalThunk {
-    LoadPdf { bytes: Vec<u8> },
+    LoadPdf { file_name: String, bytes: Vec<u8> },
 }
 
 pub enum GlobalAction {
     PdfLoading { uuid: String },
     PdfLoadingFailed { uuid: String },
-    PdfLoaded { uuid: String },
+    PdfLoaded {
+        title: String,
+        author: String,
+        uuid: String
+    },
 }
 
 pub trait GlobalStateListener: Send + Sync {
@@ -83,7 +89,7 @@ impl GlobalStore {
 
     pub fn dispatch_thunk(self: Arc<Self>, thunk: GlobalThunk) {
         let result = match thunk {
-            LoadPdf { bytes } => self.load_pdf(bytes)
+            LoadPdf { file_name, bytes } => self.load_pdf(file_name, bytes)
         };
         match result {
             Ok(_) => {}
@@ -102,13 +108,17 @@ impl GlobalStore {
 
     fn reduce(state: GlobalState, action: GlobalAction) -> GlobalState {
         match action {
-            PdfLoading { uuid } => {
+            PdfLoading { uuid } => state,
+            PdfLoadingFailed { uuid } => state,
+            PdfLoaded { title, author, uuid } => {
                 let mut new_state = state.clone();
-                new_state.pdfs.push(Pdf { uuid });
+                new_state.pdfs.push(Pdf {
+                    title,
+                    author,
+                    uuid,
+                });
                 new_state
             }
-            PdfLoadingFailed { uuid } => { state }
-            PdfLoaded { uuid } => { state }
         }
     }
 
@@ -128,11 +138,11 @@ impl GlobalStore {
         }
     }
 
-    fn load_pdf(&self, bytes: Vec<u8>) -> Result<()> {
+    fn load_pdf(&self, file_name: String, bytes: Vec<u8>) -> Result<()> {
         let guard = self.pdfium_manager.lock().unwrap();
         let pdfium_manager = guard.as_ref().context("No Pdfium Manager")?;
         let pdfium_action_sender = pdfium_manager.pdfium_action_sender.lock().unwrap();
-        pdfium_action_sender.send(PdfiumAction::LoadPdf { bytes })?;
+        pdfium_action_sender.send(PdfiumAction::LoadPdf { file_name, bytes })?;
         Ok(())
     }
 }

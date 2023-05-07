@@ -4,6 +4,8 @@ namespace global_bindings {
 
 
 dictionary Pdf {
+    string title;
+    string author;
     string uuid;
 };
 
@@ -14,14 +16,14 @@ dictionary GlobalState {
 
 [Enum]
 interface GlobalThunk {
-    LoadPdf(sequence<u8> bytes);
+    LoadPdf(string file_name, sequence<u8> bytes);
 };
 
 [Enum]
 interface GlobalAction {
     PdfLoading(string uuid);
     PdfLoadingFailed(string uuid);
-    PdfLoaded(string uuid);
+    PdfLoaded(string title, string author, string uuid);
 };
 
 callback interface GlobalStateListener {

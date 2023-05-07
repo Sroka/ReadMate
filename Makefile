@@ -6,10 +6,10 @@ android-aarch64:
 	cd bindings/ffi && \
 	cargo build --release --target aarch64-linux-android && \
 	mkdir -p ../../app/android/app/src/main/jniLibs/aarch64 && \
-	cp ../../target/aarch64-linux-android/release/libexample_rust_bindings_ffi.so \
+	cp ../../target/aarch64-linux-android/release/libread_mate.so \
 		../../app/android/app/src/main/jniLibs/aarch64/libuniffi_global_bindings.so && \
 	mkdir -p ../../app/android/app/src/main/jniLibs/arm64-v8a && \
-	cp ../../target/aarch64-linux-android/release/libexample_rust_bindings_ffi.so \
+	cp ../../target/aarch64-linux-android/release/libread_mate.so \
 		../../app/android/app/src/main/jniLibs/arm64-v8a/libuniffi_global_bindings.so
 
 android-x86_64:
