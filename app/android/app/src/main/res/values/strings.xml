@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">Super PDF Reader</string>
+    <string name="app_name">ReadMate</string>
     <string name="empty_library_message">Add some books</string>
+    <string name="book_loading_error_title">Loading failed</string>
 </resources>

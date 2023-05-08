@@ -22,23 +22,27 @@ pub struct GlobalState {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Pdf {
-    pub title: String,
-    pub author: String,
-    pub uuid: String,
+pub enum Pdf {
+    LoadingPdf { uuid: String },
+    ValidPdf {
+        title: String,
+        author: String,
+        uuid: String,
+    },
+    ErrorPdf { uuid: String },
 }
 
 pub enum GlobalThunk {
-    LoadPdf { file_name: String, bytes: Vec<u8> },
+    LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
 }
 
 pub enum GlobalAction {
     PdfLoading { uuid: String },
     PdfLoadingFailed { uuid: String },
     PdfLoaded {
+        uuid: String,
         title: String,
         author: String,
-        uuid: String
     },
 }
 
@@ -89,7 +93,7 @@ impl GlobalStore {
 
     pub fn dispatch_thunk(self: Arc<Self>, thunk: GlobalThunk) {
         let result = match thunk {
-            LoadPdf { file_name, bytes } => self.load_pdf(file_name, bytes)
+            LoadPdf { uuid, file_name, bytes } => self.load_pdf(uuid, file_name, bytes)
         };
         match result {
             Ok(_) => {}
@@ -108,15 +112,26 @@ impl GlobalStore {
 
     fn reduce(state: GlobalState, action: GlobalAction) -> GlobalState {
         match action {
-            PdfLoading { uuid } => state,
-            PdfLoadingFailed { uuid } => state,
-            PdfLoaded { title, author, uuid } => {
+            PdfLoading { uuid } => {
                 let mut new_state = state.clone();
-                new_state.pdfs.push(Pdf {
-                    title,
-                    author,
-                    uuid,
-                });
+                new_state.pdfs.push(Pdf::LoadingPdf { uuid });
+                new_state
+            },
+            PdfLoadingFailed { uuid } => state,
+            PdfLoaded { title, author, uuid: loaded_pdf_uuid } => {
+                let mut new_state = state.clone();
+                for pdf in &mut new_state.pdfs {
+                    match pdf {
+                        Pdf::LoadingPdf { uuid } if uuid.clone() == loaded_pdf_uuid => {
+                            *pdf = Pdf::ValidPdf {
+                                uuid: uuid.clone(),
+                                title: title.clone(),
+                                author: author.clone(),
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 new_state
             }
         }
@@ -138,11 +153,11 @@ impl GlobalStore {
         }
     }
 
-    fn load_pdf(&self, file_name: String, bytes: Vec<u8>) -> Result<()> {
+    fn load_pdf(&self, uuid: String, file_name: String, bytes: Vec<u8>) -> Result<()> {
         let guard = self.pdfium_manager.lock().unwrap();
         let pdfium_manager = guard.as_ref().context("No Pdfium Manager")?;
         let pdfium_action_sender = pdfium_manager.pdfium_action_sender.lock().unwrap();
-        pdfium_action_sender.send(PdfiumAction::LoadPdf { file_name, bytes })?;
+        pdfium_action_sender.send(PdfiumAction::LoadPdf { uuid, file_name, bytes })?;
         Ok(())
     }
 }

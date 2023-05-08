@@ -8,6 +8,10 @@ use crate::global_state::{GlobalAction};
 
 use uuid::Uuid;
 
+pub fn generate_pdf_uuid() -> String {
+    Uuid::new_v4().to_string()
+}
+
 pub struct PdfiumManager {
     pub pdfium_action_sender: Mutex<Sender<PdfiumAction>>,
     pub pdfium_thread_handle: JoinHandle<()>,
@@ -25,13 +29,7 @@ impl PdfiumManager {
             loop {
                 let action = action_receiver.recv().unwrap();
                 match action {
-                    PdfiumAction::LoadPdf { file_name, bytes } => {
-                        let pdf_uuid = Uuid::new_v4();
-                        global_action_sender
-                            .lock()
-                            .unwrap()
-                            .send(GlobalAction::PdfLoading { uuid: pdf_uuid.to_string() })
-                            .unwrap();
+                    PdfiumAction::LoadPdf { uuid, file_name, bytes } => {
                         let result = pdfium.load_pdf_from_byte_slice(Box::leak(Box::new(bytes)), None);
                         match result {
                             Ok(pdf) => {
@@ -55,9 +53,9 @@ impl PdfiumManager {
                                     .lock()
                                     .unwrap()
                                     .send(GlobalAction::PdfLoaded {
+                                        uuid: uuid.clone(),
                                         title: display_title,
                                         author,
-                                        uuid: pdf_uuid.to_string(),
                                     })
                                     .unwrap();
                             }
@@ -65,7 +63,7 @@ impl PdfiumManager {
                                 global_action_sender
                                     .lock()
                                     .unwrap()
-                                    .send(GlobalAction::PdfLoadingFailed { uuid: pdf_uuid.to_string() })
+                                    .send(GlobalAction::PdfLoadingFailed { uuid: uuid.clone() })
                                     .unwrap();
                             }
                         }
@@ -82,5 +80,5 @@ impl PdfiumManager {
 
 
 pub enum PdfiumAction {
-    LoadPdf { file_name: String, bytes: Vec<u8> }
+    LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> }
 }

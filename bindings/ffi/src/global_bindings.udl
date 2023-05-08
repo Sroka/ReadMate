@@ -1,12 +1,12 @@
 namespace global_bindings {
-
+    string generate_pdf_uuid();
 };
 
-
-dictionary Pdf {
-    string title;
-    string author;
-    string uuid;
+[Enum]
+interface Pdf {
+    LoadingPdf(string uuid);
+    ValidPdf(string title, string author, string uuid);
+    ErrorPdf(string uuid);
 };
 
 dictionary GlobalState {
@@ -16,7 +16,7 @@ dictionary GlobalState {
 
 [Enum]
 interface GlobalThunk {
-    LoadPdf(string file_name, sequence<u8> bytes);
+    LoadPdf(string uuid, string file_name, sequence<u8> bytes);
 };
 
 [Enum]
