@@ -47,20 +47,17 @@ class BooksRecyclerViewAdapter : ListAdapter<Pdf, BooksRecyclerViewAdapter.ViewH
         when (item) {
             is Pdf.ErrorPdf -> {
                 holder.bookLoadingProgressBar.isVisible = false
-                holder.bookCover.isVisible = true
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.setText(R.string.book_loading_error_title)
             }
 
             is Pdf.LoadingPdf -> {
                 holder.bookLoadingProgressBar.isVisible = true
-                holder.bookCover.isVisible = false
                 holder.bookTitle.isVisible = false
             }
 
             is Pdf.ValidPdf -> {
                 holder.bookLoadingProgressBar.isVisible = false
-                holder.bookCover.isVisible = true
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.text = item.title
             }

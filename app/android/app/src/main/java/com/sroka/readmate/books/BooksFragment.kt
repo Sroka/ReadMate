@@ -81,7 +81,8 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
         emptyLibraryText = view.findViewById(R.id.empty_library_message)
         content = view.findViewById(R.id.books_list)
         addButton = view.findViewById(R.id.add_book_button)
-        content?.layoutManager = GridLayoutManager(context, 2)
+        val gridLayoutManager = GridLayoutManager(context, 2)
+        content?.layoutManager = gridLayoutManager
         contentAdapter = BooksRecyclerViewAdapter()
         content?.adapter = contentAdapter
         addButton?.setOnClickListener { booksStore.dispatchThunk(BooksThunk.AddClicked) }
