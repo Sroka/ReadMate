@@ -1,5 +1,7 @@
 package com.sroka.readmate.books
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
@@ -12,6 +14,9 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import com.sroka.readmate.R
+import java.nio.ByteBuffer
+import java.nio.IntBuffer
+import uniffi.global_bindings.BookCover
 
 import uniffi.global_bindings.Pdf
 
@@ -60,6 +65,20 @@ class BooksRecyclerViewAdapter : ListAdapter<Pdf, BooksRecyclerViewAdapter.ViewH
                 holder.bookLoadingProgressBar.isVisible = false
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.text = item.title
+                when (item.cover) {
+                    is BookCover.FirstPage -> {
+//                        val sampleBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+//                        sampleBitmap.eraseColor(Color.RED)
+//                        val pixel = sampleBitmap.getPixel(0, 0)
+//                        println("PIXEL: ${pixel.toUInt().toString(2)}")
+                        val array = item.cover.bitmap.toUIntArray().toIntArray()
+                        println("PIXELS: ${array.size}")
+                        val createBitmap = Bitmap.createBitmap(array, 100, 141, Bitmap.Config.ARGB_8888);
+                        holder.bookCover.setImageBitmap(createBitmap)
+                    }
+
+                    BookCover.NoCover -> TODO()
+                }
             }
         }
 

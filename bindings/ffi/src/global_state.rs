@@ -28,8 +28,15 @@ pub enum Pdf {
         title: String,
         author: String,
         uuid: String,
+        cover: BookCover,
     },
     ErrorPdf { uuid: String },
+}
+
+#[derive(Clone, PartialEq)]
+pub enum BookCover {
+    FirstPage { bitmap: Vec<u32> },
+    NoCover,
 }
 
 pub enum GlobalThunk {
@@ -43,6 +50,7 @@ pub enum GlobalAction {
         uuid: String,
         title: String,
         author: String,
+        cover: BookCover,
     },
 }
 
@@ -118,7 +126,7 @@ impl GlobalStore {
                 new_state
             },
             PdfLoadingFailed { uuid } => state,
-            PdfLoaded { title, author, uuid: loaded_pdf_uuid } => {
+            PdfLoaded { title, author, uuid: loaded_pdf_uuid, cover } => {
                 let mut new_state = state.clone();
                 for pdf in &mut new_state.pdfs {
                     match pdf {
@@ -127,6 +135,7 @@ impl GlobalStore {
                                 uuid: uuid.clone(),
                                 title: title.clone(),
                                 author: author.clone(),
+                                cover: cover.clone(),
                             }
                         }
                         _ => {}

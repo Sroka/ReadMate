@@ -5,8 +5,14 @@ namespace global_bindings {
 [Enum]
 interface Pdf {
     LoadingPdf(string uuid);
-    ValidPdf(string title, string author, string uuid);
+    ValidPdf(string title, string author, string uuid, BookCover cover);
     ErrorPdf(string uuid);
+};
+
+[Enum]
+interface BookCover {
+    FirstPage(sequence<u32> bitmap);
+    NoCover();
 };
 
 dictionary GlobalState {
@@ -23,7 +29,7 @@ interface GlobalThunk {
 interface GlobalAction {
     PdfLoading(string uuid);
     PdfLoadingFailed(string uuid);
-    PdfLoaded(string title, string author, string uuid);
+    PdfLoaded(string title, string author, string uuid, BookCover cover);
 };
 
 callback interface GlobalStateListener {
