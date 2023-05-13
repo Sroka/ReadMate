@@ -2,22 +2,29 @@ namespace global_bindings {
     string generate_pdf_uuid();
 };
 
-[Enum]
-interface Pdf {
-    LoadingPdf(string uuid);
-    ValidPdf(string title, string author, string uuid, BookCover cover);
-    ErrorPdf(string uuid);
+dictionary Book {
+    string uuid;
+    Bitmap? thumbnail;
+    PdfLoadingState loading_state;
 };
 
 [Enum]
-interface BookCover {
-    FirstPage(sequence<u32> bitmap);
-    NoCover();
+interface PdfLoadingState {
+    LoadingPdf();
+    ValidPdf(string title, string author, Bitmap? thumbnail);
+    ErrorPdf();
+};
+
+interface Bitmap {
+    i32 width();
+    i32 height();
+    string uid();
+    sequence<u32> copy_pixels();
 };
 
 dictionary GlobalState {
     string some_text;
-    sequence<Pdf> pdfs;
+    sequence<Book> books;
 };
 
 [Enum]
@@ -29,7 +36,7 @@ interface GlobalThunk {
 interface GlobalAction {
     PdfLoading(string uuid);
     PdfLoadingFailed(string uuid);
-    PdfLoaded(string title, string author, string uuid, BookCover cover);
+    PdfLoaded(string title, string author, string uuid, Bitmap? thumbnail);
 };
 
 callback interface GlobalStateListener {
@@ -51,7 +58,7 @@ interface GlobalStore {
 
 dictionary BooksState {
     string some_text;
-    sequence<Pdf> pdfs;
+    sequence<Book> books;
 };
 
 [Enum]
@@ -66,7 +73,7 @@ interface BooksThunk {
 
 [Enum]
 interface BooksAction {
-    PdfsListUpdated(sequence<Pdf> pdfs);
+    BooksListUpdated(sequence<Book> books);
 };
 
 callback interface BooksStateListener {

@@ -3,12 +3,9 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
 use anyhow::{Result, Context};
-use pdfium_render::bitmap::PdfBitmap;
-use pdfium_render::error::PdfiumError;
 use pdfium_render::metadata::PdfDocumentMetadataTagType;
-use pdfium_render::page::PdfPage;
-use pdfium_render::prelude::{PdfDocument, Pdfium};
-use crate::global_state::{BookCover, GlobalAction};
+use pdfium_render::prelude::*;
+use crate::global_state::{Bitmap, GlobalAction};
 
 use uuid::Uuid;
 
@@ -55,10 +52,7 @@ impl PdfiumManager {
                                         } else {
                                             title
                                         };
-                                        let cover = get_cover(pdf)
-                                            .unwrap_or_else(|error| {
-                                                error!("Couldn't get cover: {error}");
-                                                BookCover::NoCover });
+                                        let thumbnail = get_thumbnail(pdf).ok();
                                         global_action_sender
                                             .lock()
                                             .unwrap()
@@ -66,7 +60,7 @@ impl PdfiumManager {
                                                 uuid: uuid.clone(),
                                                 title: display_title,
                                                 author,
-                                                cover,
+                                                thumbnail,
                                             })
                                             .unwrap();
 
@@ -93,9 +87,11 @@ impl PdfiumManager {
     }
 }
 
-fn get_cover(pdf: PdfDocument) -> Result<BookCover> {
+fn get_thumbnail(pdf: PdfDocument) -> Result<Arc<Bitmap>> {
     let first_page = pdf.pages().get(0)?;
-    let pdf_bitmap = first_page.render(100, 141, None)?;
+    let width = 1000;
+    let height = 1410;
+    let pdf_bitmap = first_page.render(width, height, None)?;
     let pdf_bitmap: Vec<u32> = pdf_bitmap
         .as_bytes()
         .chunks(4)
@@ -108,7 +104,8 @@ fn get_cover(pdf: PdfDocument) -> Result<BookCover> {
             argb
         })
         .collect();
-    Ok(BookCover::FirstPage { bitmap: pdf_bitmap })
+    let bitmap_uid = Uuid::new_v4().to_string();
+    Ok(Bitmap::new(width.into(), height.into(), bitmap_uid, pdf_bitmap))
 }
 
 

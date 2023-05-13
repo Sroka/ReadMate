@@ -1,45 +1,29 @@
 package com.sroka.readmate.books
 
 import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
 import com.sroka.readmate.R
-import java.nio.ByteBuffer
-import java.nio.IntBuffer
-import uniffi.global_bindings.BookCover
-
-import uniffi.global_bindings.Pdf
+import com.sroka.readmate.getFromCacheOrCreate
+import uniffi.global_bindings.Book
+import uniffi.global_bindings.PdfLoadingState
 
 
-class BooksRecyclerViewAdapter : ListAdapter<Pdf, BooksRecyclerViewAdapter.ViewHolder>(DIFF_CALLBACK) {
+class BooksRecyclerViewAdapter : ListAdapter<Book, BooksRecyclerViewAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Pdf>() {
-            override fun areItemsTheSame(oldItem: Pdf, newItem: Pdf): Boolean {
-                val oldItemUuid = when (oldItem) {
-                    is Pdf.ErrorPdf -> oldItem.uuid
-                    is Pdf.LoadingPdf -> oldItem.uuid
-                    is Pdf.ValidPdf -> oldItem.uuid
-                }
-                val newItemUuid = when (newItem) {
-                    is Pdf.ErrorPdf -> newItem.uuid
-                    is Pdf.LoadingPdf -> newItem.uuid
-                    is Pdf.ValidPdf -> newItem.uuid
-                }
-                return oldItemUuid == newItemUuid
-            }
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Book>() {
+            override fun areItemsTheSame(oldItem: Book, newItem: Book): Boolean = oldItem.uuid == newItem.uuid
 
-            override fun areContentsTheSame(oldItem: Pdf, newItem: Pdf): Boolean = oldItem == newItem
+            override fun areContentsTheSame(oldItem: Book, newItem: Book) = oldItem == newItem
         }
     }
 
@@ -49,35 +33,27 @@ class BooksRecyclerViewAdapter : ListAdapter<Pdf, BooksRecyclerViewAdapter.ViewH
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        when (item) {
-            is Pdf.ErrorPdf -> {
+        when (val loadingState = item.loadingState) {
+            is PdfLoadingState.ErrorPdf -> {
                 holder.bookLoadingProgressBar.isVisible = false
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.setText(R.string.book_loading_error_title)
             }
 
-            is Pdf.LoadingPdf -> {
+            is PdfLoadingState.LoadingPdf -> {
                 holder.bookLoadingProgressBar.isVisible = true
                 holder.bookTitle.isVisible = false
             }
 
-            is Pdf.ValidPdf -> {
+            is PdfLoadingState.ValidPdf -> {
                 holder.bookLoadingProgressBar.isVisible = false
                 holder.bookTitle.isVisible = true
-                holder.bookTitle.text = item.title
-                when (item.cover) {
-                    is BookCover.FirstPage -> {
-//                        val sampleBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-//                        sampleBitmap.eraseColor(Color.RED)
-//                        val pixel = sampleBitmap.getPixel(0, 0)
-//                        println("PIXEL: ${pixel.toUInt().toString(2)}")
-                        val array = item.cover.bitmap.toUIntArray().toIntArray()
-                        println("PIXELS: ${array.size}")
-                        val createBitmap = Bitmap.createBitmap(array, 100, 141, Bitmap.Config.ARGB_8888);
-                        holder.bookCover.setImageBitmap(createBitmap)
-                    }
+                holder.bookTitle.text = loadingState.title
+                val thumbnail = item.thumbnail
+                if (thumbnail != null) {
+                    holder.bookCover.setImageBitmap(thumbnail.getFromCacheOrCreate())
+                } else {
 
-                    BookCover.NoCover -> TODO()
                 }
             }
         }

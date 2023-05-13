@@ -14,7 +14,6 @@
             android:id="@+id/book_cover"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_margin="4dp"
             android:scaleType="centerCrop"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="H,1:1.41"

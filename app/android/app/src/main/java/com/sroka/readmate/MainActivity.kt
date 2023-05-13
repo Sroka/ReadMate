@@ -30,5 +30,6 @@ class MainActivity : AppCompatActivity(), GlobalStateListener, IdentityId {
 
     override fun newState(state: GlobalState) {
         println("New global state: $state")
+        state.destroy()
     }
 }

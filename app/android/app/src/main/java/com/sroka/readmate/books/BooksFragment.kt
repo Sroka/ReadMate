@@ -108,7 +108,9 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
 
     private fun render(state: BooksState) {
         println("New books state: ${Thread.currentThread().name} $state")
-        contentAdapter?.submitList(state.pdfs)
+        contentAdapter?.submitList(state.books) {
+            state.destroy()
+        }
     }
 
     override fun newSideEffect(sideEffect: BooksSideEffect) {

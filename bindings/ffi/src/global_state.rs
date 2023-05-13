@@ -1,9 +1,7 @@
-use std::any::Any;
 use std::collections::HashMap;
-use std::sync::{Arc, LockResult, Mutex, RwLock};
-use std::sync::mpsc::{channel, Receiver, Sender, SendError};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use pdfium_render::prelude::*;
-use uniffi::deps::log::info;
 use log::LevelFilter;
 use android_logger::Config;
 
@@ -18,29 +16,88 @@ use crate::pdfium_manager::{PdfiumManager, PdfiumAction};
 #[derive(Clone)]
 pub struct GlobalState {
     pub some_text: String,
-    pub pdfs: Vec<Pdf>,
+    pub books: Vec<Book>,
 }
 
 #[derive(Clone, PartialEq)]
-pub enum Pdf {
-    LoadingPdf { uuid: String },
+pub struct Book {
+    pub uuid: String,
+    pub thumbnail: Option<Arc<Bitmap>>,
+    pub loading_state: PdfLoadingState,
+}
+
+#[derive(Clone, PartialEq)]
+pub enum PdfLoadingState {
+    LoadingPdf,
     ValidPdf {
         title: String,
         author: String,
-        uuid: String,
-        cover: BookCover,
+        thumbnail: Option<Arc<Bitmap>>,
     },
-    ErrorPdf { uuid: String },
-}
-
-#[derive(Clone, PartialEq)]
-pub enum BookCover {
-    FirstPage { bitmap: Vec<u32> },
-    NoCover,
+    ErrorPdf,
 }
 
 pub enum GlobalThunk {
     LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
+}
+
+pub struct Bitmap {
+    pub width: i32,
+    pub height: i32,
+    pub uid: String,
+    pub pixels: Vec<u32>,
+}
+
+impl Bitmap {
+    pub fn new(
+        width: i32,
+        height: i32,
+        uid: String,
+        pixels: Vec<u32>,
+    ) -> Arc<Bitmap> {
+        Arc::new(
+            Bitmap {
+                width,
+                height,
+                uid,
+                pixels,
+            }
+        )
+    }
+
+    pub fn width(&self) -> i32 {
+        self.width
+    }
+
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+
+    pub fn uid(&self) -> String {
+        self.uid.clone()
+    }
+
+    pub fn copy_pixels(&self) -> Vec<u32> {
+        self.pixels.clone()
+    }
+}
+
+impl PartialEq for Bitmap {
+    fn eq(&self, other: &Self) -> bool {
+        self.uid == other.uid
+    }
+}
+
+impl Clone for Bitmap {
+    fn clone(&self) -> Self {
+        info!("ERROR - cloned bitmap");
+        Bitmap {
+            width: self.width,
+            height: self.height,
+            uid: self.uid.clone(),
+            pixels: vec![],
+        }
+    }
 }
 
 pub enum GlobalAction {
@@ -50,7 +107,7 @@ pub enum GlobalAction {
         uuid: String,
         title: String,
         author: String,
-        cover: BookCover,
+        thumbnail: Option<Arc<Bitmap>>,
     },
 }
 
@@ -71,7 +128,7 @@ pub struct GlobalStore {
 
 impl GlobalStore {
     pub fn new() -> Self {
-        let initial_state = GlobalState { some_text: "initial_text".to_string(), pdfs: Vec::new() };
+        let initial_state = GlobalState { some_text: "initial_text".to_string(), books: Vec::new() };
         android_logger::init_once(Config::default().with_max_level(LevelFilter::Trace));
         Self {
             state: Mutex::new(initial_state),
@@ -105,7 +162,7 @@ impl GlobalStore {
         };
         match result {
             Ok(_) => {}
-            Err(error) => {error!("dispatch_thunk error - {error}")}
+            Err(error) => { error!("dispatch_thunk error - {error}") }
         }
     }
 
@@ -122,23 +179,26 @@ impl GlobalStore {
         match action {
             PdfLoading { uuid } => {
                 let mut new_state = state.clone();
-                new_state.pdfs.push(Pdf::LoadingPdf { uuid });
+                new_state.books.push(
+                    Book {
+                        uuid,
+                        thumbnail: None,
+                        loading_state: PdfLoadingState::LoadingPdf,
+                    }
+                );
                 new_state
-            },
+            }
             PdfLoadingFailed { uuid } => state,
-            PdfLoaded { title, author, uuid: loaded_pdf_uuid, cover } => {
+            PdfLoaded { title, author, uuid: loaded_pdf_uuid, thumbnail } => {
                 let mut new_state = state.clone();
-                for pdf in &mut new_state.pdfs {
-                    match pdf {
-                        Pdf::LoadingPdf { uuid } if uuid.clone() == loaded_pdf_uuid => {
-                            *pdf = Pdf::ValidPdf {
-                                uuid: uuid.clone(),
-                                title: title.clone(),
-                                author: author.clone(),
-                                cover: cover.clone(),
-                            }
+                for book in &mut new_state.books {
+                    if loaded_pdf_uuid == book.uuid {
+                        book.thumbnail = thumbnail.clone();
+                        book.loading_state = PdfLoadingState::ValidPdf {
+                            title: title.clone(),
+                            author: author.clone(),
+                            thumbnail: thumbnail.clone(),
                         }
-                        _ => {}
                     }
                 }
                 new_state

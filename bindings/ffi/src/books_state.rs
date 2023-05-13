@@ -1,15 +1,13 @@
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::string::ToString;
-use std::sync::{Arc, Mutex, RwLock};
-use pdfium_render::prelude::Pdfium;
-use crate::books_state::BooksAction::PdfsListUpdated;
-use crate::global_state::{GlobalAction, GlobalState, GlobalStateListener, GlobalStore, GlobalThunk, Pdf};
+use std::sync::{Arc, Mutex};
+use crate::books_state::BooksAction::BooksListUpdated;
+use crate::global_state::{Book, GlobalState, GlobalStateListener, GlobalStore, PdfLoadingState};
 
 #[derive(Clone)]
 pub struct BooksState {
     pub some_text: String,
-    pub pdfs: Vec<Pdf>,
+    pub books: Vec<Book>,
 }
 
 #[derive(Clone)]
@@ -22,7 +20,7 @@ pub enum BooksThunk {
 }
 
 pub enum BooksAction {
-    PdfsListUpdated { pdfs: Vec<Pdf> },
+    BooksListUpdated { books: Vec<Book> },
 }
 
 pub trait BooksStateListener: Send + Sync {
@@ -42,7 +40,7 @@ pub struct BooksStore {
 
 impl BooksStore {
     pub fn new(global_store: Arc<GlobalStore>) -> Self {
-        let initial_state = BooksState { some_text: "initial_text".to_string(), pdfs: Vec::new() };
+        let initial_state = BooksState { some_text: "initial_text".to_string(), books: Vec::new() };
         Self {
             global_store: Mutex::new(global_store),
             state: Mutex::new(initial_state),
@@ -81,9 +79,9 @@ impl BooksStore {
 
     fn reduce(state: BooksState, action: BooksAction) -> BooksState {
         match action {
-            PdfsListUpdated { pdfs } => {
+            BooksListUpdated { books: pdfs } => {
                 let mut new_state = state.clone();
-                new_state.pdfs = pdfs;
+                new_state.books = pdfs;
                 new_state
             }
         }
@@ -105,11 +103,11 @@ impl Drop for BooksStore {
 impl GlobalStateListener for Arc<BooksStore> {
     fn new_state(&self, state: GlobalState) {
         let Some(last_global_state) = &self.last_global_state  else {
-            self.clone().dispatch_action(PdfsListUpdated { pdfs: state.pdfs.clone() });
+            self.clone().dispatch_action(BooksListUpdated { books: state.books.clone() });
             return;
         };
-        if last_global_state.pdfs != state.pdfs {
-            self.clone().dispatch_action(PdfsListUpdated { pdfs: state.pdfs.clone() });
+        if last_global_state.books != state.books {
+            self.clone().dispatch_action(BooksListUpdated { books: state.books.clone() });
         }
     }
 }
