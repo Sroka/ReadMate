@@ -63,7 +63,6 @@ impl PdfiumManager {
                                                 thumbnail,
                                             })
                                             .unwrap();
-
                                     }
                                 }
                             }
@@ -97,9 +96,9 @@ fn get_thumbnail(pdf: PdfDocument) -> Result<Arc<Bitmap>> {
         .chunks(4)
         .map(|pixel| {
             let a = u32::from(pixel[3]) << 24;
-            let r = u32::from(pixel[2]) << 16;
+            let r = u32::from(pixel[0]) << 16;
             let g = u32::from(pixel[1]) << 8;
-            let b = u32::from(pixel[0]);
+            let b = u32::from(pixel[2]);
             let argb: u32 = a |r | g | b;
             argb
         })

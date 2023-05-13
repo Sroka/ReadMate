@@ -35,17 +35,20 @@ class BooksRecyclerViewAdapter : ListAdapter<Book, BooksRecyclerViewAdapter.View
         val item = getItem(position)
         when (val loadingState = item.loadingState) {
             is PdfLoadingState.ErrorPdf -> {
+                holder.bookLoadingError.isVisible = true
                 holder.bookLoadingProgressBar.isVisible = false
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.setText(R.string.book_loading_error_title)
             }
 
             is PdfLoadingState.LoadingPdf -> {
+                holder.bookLoadingError.isVisible = false
                 holder.bookLoadingProgressBar.isVisible = true
                 holder.bookTitle.isVisible = false
             }
 
             is PdfLoadingState.ValidPdf -> {
+                holder.bookLoadingError.isVisible = false
                 holder.bookLoadingProgressBar.isVisible = false
                 holder.bookTitle.isVisible = true
                 holder.bookTitle.text = loadingState.title
@@ -53,7 +56,7 @@ class BooksRecyclerViewAdapter : ListAdapter<Book, BooksRecyclerViewAdapter.View
                 if (thumbnail != null) {
                     holder.bookCover.setImageBitmap(thumbnail.getFromCacheOrCreate())
                 } else {
-
+                    holder.bookCover.setImageBitmap(null)
                 }
             }
         }
@@ -64,11 +67,16 @@ class BooksRecyclerViewAdapter : ListAdapter<Book, BooksRecyclerViewAdapter.View
         val bookCover: ImageView
         val bookTitle: TextView
         val bookLoadingProgressBar: ProgressBar
+        val bookLoadingError: View
 
         init {
             bookCover = view.findViewById(R.id.book_cover)
             bookTitle = view.findViewById(R.id.book_title)
             bookLoadingProgressBar = view.findViewById(R.id.book_loading_progress_bar)
+            bookLoadingError = view.findViewById(R.id.book_loading_error)
+            view.setOnClickListener {
+
+            }
         }
     }
 }

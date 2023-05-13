@@ -188,11 +188,19 @@ impl GlobalStore {
                 );
                 new_state
             }
-            PdfLoadingFailed { uuid } => state,
-            PdfLoaded { title, author, uuid: loaded_pdf_uuid, thumbnail } => {
+            PdfLoadingFailed { uuid } => {
                 let mut new_state = state.clone();
                 for book in &mut new_state.books {
-                    if loaded_pdf_uuid == book.uuid {
+                    if uuid == book.uuid {
+                        book.loading_state = PdfLoadingState::ErrorPdf
+                    }
+                }
+                new_state
+            },
+            PdfLoaded { title, author, uuid , thumbnail } => {
+                let mut new_state = state.clone();
+                for book in &mut new_state.books {
+                    if uuid == book.uuid {
                         book.thumbnail = thumbnail.clone();
                         book.loading_state = PdfLoadingState::ValidPdf {
                             title: title.clone(),
