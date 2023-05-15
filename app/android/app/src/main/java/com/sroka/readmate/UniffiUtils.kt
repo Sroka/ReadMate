@@ -1,9 +1,10 @@
 package com.sroka.readmate
 
 import android.graphics.Bitmap
+import android.os.Looper
 import android.util.Log
+import android.view.View
 import java.lang.ref.SoftReference
-import java.util.WeakHashMap
 
 
 private val bitmapMap = mutableMapOf<String, SoftReference<Bitmap>>()
@@ -19,4 +20,8 @@ fun uniffi.global_bindings.Bitmap.getFromCacheOrCreate(): Bitmap {
         bitmapMap[uid] = SoftReference(newBitmap)
         newBitmap
     }
+}
+
+fun View.assureMainThread(block: () -> Unit) {
+    if (Thread.currentThread() == Looper.getMainLooper().thread) block() else post { block() }
 }

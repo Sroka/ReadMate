@@ -13,17 +13,17 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.sroka.readmate.IdentityId
 import com.sroka.readmate.R
+import com.sroka.readmate.assureMainThread
 import kotlin.concurrent.thread
 import org.koin.android.ext.android.inject
 import org.koin.androidx.scope.ScopeFragment
+import uniffi.global_bindings.BooksAction
 import uniffi.global_bindings.BooksSideEffect
 import uniffi.global_bindings.BooksState
 import uniffi.global_bindings.BooksStateListener
 import uniffi.global_bindings.BooksStore
-import uniffi.global_bindings.BooksThunk
 import uniffi.global_bindings.GlobalAction
 import uniffi.global_bindings.GlobalStore
-import uniffi.global_bindings.GlobalThunk
 import uniffi.global_bindings.generatePdfUuid
 
 
@@ -44,7 +44,7 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
         uri?.let { existingUri ->
             thread(true) {
                 val pdfUuid = generatePdfUuid()
-                view?.post { globalStore.dispatchAction(GlobalAction.PdfLoading(uuid = pdfUuid)) }
+                view?.post { globalStore.dispatchAction(GlobalAction.MarkPdfLoading(uuid = pdfUuid)) }
                 val fileName = activity
                     ?.contentResolver
                     ?.query(existingUri, null, null, null, null)
@@ -65,9 +65,9 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
                     ?.openInputStream(existingUri)
                     ?.use { it.readBytes() }
                 if (bytes != null) {
-                    globalStore.dispatchThunk(GlobalThunk.LoadPdf(pdfUuid, fileName, bytes.toUByteArray().asList()))
+                    globalStore.dispatchAction(GlobalAction.LoadPdf(pdfUuid, fileName, bytes.toUByteArray().asList()))
                 } else {
-                    globalStore.dispatchAction(GlobalAction.PdfLoadingFailed(uuid = pdfUuid))
+                    globalStore.dispatchAction(GlobalAction.MarkPdfLoadingFailed(uuid = pdfUuid))
                 }
             }
         }
@@ -85,7 +85,7 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
         content?.layoutManager = gridLayoutManager
         contentAdapter = BooksRecyclerViewAdapter()
         content?.adapter = contentAdapter
-        addButton?.setOnClickListener { booksStore.dispatchThunk(BooksThunk.AddClicked) }
+        addButton?.setOnClickListener { booksStore.dispatchAction(BooksAction.AddClicked) }
         booksStore.addListener(getIdentityId(), this)
         return view
     }
@@ -99,11 +99,7 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
     }
 
     override fun newState(state: BooksState) {
-        if (Thread.currentThread() == Looper.getMainLooper().thread) {
-            render(state)
-        } else {
-            view?.post { render(state) }
-        }
+        view?.assureMainThread { render(state) }
     }
 
     private fun render(state: BooksState) {

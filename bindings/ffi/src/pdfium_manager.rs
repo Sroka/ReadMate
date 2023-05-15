@@ -5,7 +5,7 @@ use std::thread::JoinHandle;
 use anyhow::{Result, Context};
 use pdfium_render::metadata::PdfDocumentMetadataTagType;
 use pdfium_render::prelude::*;
-use crate::global_state::{Bitmap, GlobalAction};
+use crate::global_state::{Bitmap, GlobalResult};
 
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ pub struct PdfiumManager {
 }
 
 impl PdfiumManager {
-    pub fn new(global_action_sender: Arc<Mutex<Sender<GlobalAction>>>) -> PdfiumManager {
+    pub fn new(global_action_sender: Arc<Mutex<Sender<GlobalResult>>>) -> PdfiumManager {
         let (action_sender, action_receiver): (Sender<PdfiumAction>, Receiver<PdfiumAction>) = channel();
         let pdfium_thread_handle = thread::spawn(move || {
             let pdfium_bindings = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))
@@ -56,7 +56,7 @@ impl PdfiumManager {
                                         global_action_sender
                                             .lock()
                                             .unwrap()
-                                            .send(GlobalAction::PdfLoaded {
+                                            .send(GlobalResult::PdfLoaded {
                                                 uuid: uuid.clone(),
                                                 title: display_title,
                                                 author,
@@ -71,7 +71,7 @@ impl PdfiumManager {
                                 global_action_sender
                                     .lock()
                                     .unwrap()
-                                    .send(GlobalAction::PdfLoadingFailed { uuid: uuid.clone() })
+                                    .send(GlobalResult::PdfLoadingFailed { uuid: uuid.clone() })
                                     .unwrap();
                             }
                         }

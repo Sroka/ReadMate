@@ -8,8 +8,6 @@ use android_logger::Config;
 use std::thread;
 use std::thread::JoinHandle;
 use anyhow::{Result, Context};
-use GlobalAction::{PdfLoaded, PdfLoading, PdfLoadingFailed};
-use GlobalThunk::LoadPdf;
 use crate::pdfium_manager::{PdfiumManager, PdfiumAction};
 
 
@@ -37,8 +35,10 @@ pub enum PdfLoadingState {
     ErrorPdf,
 }
 
-pub enum GlobalThunk {
+pub enum GlobalAction {
+    MarkPdfLoading { uuid: String },
     LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
+    MarkPdfLoadingFailed { uuid: String },
 }
 
 pub struct Bitmap {
@@ -100,7 +100,7 @@ impl Clone for Bitmap {
     }
 }
 
-pub enum GlobalAction {
+pub enum GlobalResult {
     PdfLoading { uuid: String },
     PdfLoadingFailed { uuid: String },
     PdfLoaded {
@@ -116,7 +116,7 @@ pub trait GlobalStateListener: Send + Sync {
 }
 
 pub trait GlobalDispatch {
-    fn dispatch_action(self, action: GlobalAction);
+    fn dispatch_action(self, action: GlobalResult);
 }
 
 pub struct GlobalStore {
@@ -156,17 +156,18 @@ impl GlobalStore {
         self.listeners.lock().unwrap().remove(&id);
     }
 
-    pub fn dispatch_thunk(self: Arc<Self>, thunk: GlobalThunk) {
-        let result = match thunk {
-            LoadPdf { uuid, file_name, bytes } => self.load_pdf(uuid, file_name, bytes)
+    pub fn dispatch_action(self: Arc<Self>, action: GlobalAction) {
+        match action {
+            GlobalAction::MarkPdfLoading { uuid } => self.process_result(GlobalResult::PdfLoading { uuid }),
+            GlobalAction::LoadPdf { uuid, file_name, bytes } => match self.load_pdf(uuid, file_name, bytes) {
+                Ok(_) => {}
+                Err(error) => { error!("dispatch_thunk error - {error}") }
+            }
+            GlobalAction::MarkPdfLoadingFailed { uuid } => self.process_result(GlobalResult::PdfLoadingFailed { uuid }),
         };
-        match result {
-            Ok(_) => {}
-            Err(error) => { error!("dispatch_thunk error - {error}") }
-        }
     }
 
-    pub fn dispatch_action(self: Arc<Self>, action: GlobalAction) {
+    pub fn process_result(self: Arc<Self>, action: GlobalResult) {
         let mut state = self.state.lock().unwrap();
         let new_state = Self::reduce(state.clone(), action);
         *state = new_state;
@@ -175,9 +176,9 @@ impl GlobalStore {
         }
     }
 
-    fn reduce(state: GlobalState, action: GlobalAction) -> GlobalState {
+    fn reduce(state: GlobalState, action: GlobalResult) -> GlobalState {
         match action {
-            PdfLoading { uuid } => {
+            GlobalResult::PdfLoading { uuid } => {
                 let mut new_state = state.clone();
                 new_state.books.push(
                     Book {
@@ -188,7 +189,7 @@ impl GlobalStore {
                 );
                 new_state
             }
-            PdfLoadingFailed { uuid } => {
+            GlobalResult::PdfLoadingFailed { uuid } => {
                 let mut new_state = state.clone();
                 for book in &mut new_state.books {
                     if uuid == book.uuid {
@@ -196,8 +197,8 @@ impl GlobalStore {
                     }
                 }
                 new_state
-            },
-            PdfLoaded { title, author, uuid , thumbnail } => {
+            }
+            GlobalResult::PdfLoaded { title, author, uuid, thumbnail } => {
                 let mut new_state = state.clone();
                 for book in &mut new_state.books {
                     if uuid == book.uuid {
@@ -217,11 +218,11 @@ impl GlobalStore {
 
     // This really shouldn't be here. I should find a way to do this on a main thread for each platform
     fn init_worker_thread(store: Arc<GlobalStore>) -> WorkerThreadManager {
-        let (action_sender, action_receiver): (Sender<GlobalAction>, Receiver<GlobalAction>) = channel();
+        let (action_sender, action_receiver): (Sender<GlobalResult>, Receiver<GlobalResult>) = channel();
         let handle = thread::spawn(move || {
             loop {
                 let action = action_receiver.recv().unwrap();
-                store.clone().dispatch_action(action);
+                store.clone().process_result(action);
             }
         });
         WorkerThreadManager {
@@ -240,6 +241,6 @@ impl GlobalStore {
 }
 
 struct WorkerThreadManager {
-    global_action_sender: Arc<Mutex<Sender<GlobalAction>>>,
+    global_action_sender: Arc<Mutex<Sender<GlobalResult>>>,
     worker_thread_handle: JoinHandle<()>,
 }

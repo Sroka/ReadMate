@@ -8,18 +8,18 @@ dictionary Book {
     PdfLoadingState loading_state;
 };
 
-[Enum]
-interface PdfLoadingState {
-    LoadingPdf();
-    ValidPdf(string title, string author, Bitmap? thumbnail);
-    ErrorPdf();
-};
-
 interface Bitmap {
     i32 width();
     i32 height();
     string uid();
     sequence<u32> copy_pixels();
+};
+
+[Enum]
+interface PdfLoadingState {
+    LoadingPdf();
+    ValidPdf(string title, string author, Bitmap? thumbnail);
+    ErrorPdf();
 };
 
 dictionary GlobalState {
@@ -28,15 +28,10 @@ dictionary GlobalState {
 };
 
 [Enum]
-interface GlobalThunk {
-    LoadPdf(string uuid, string file_name, sequence<u8> bytes);
-};
-
-[Enum]
 interface GlobalAction {
-    PdfLoading(string uuid);
-    PdfLoadingFailed(string uuid);
-    PdfLoaded(string title, string author, string uuid, Bitmap? thumbnail);
+    MarkPdfLoading(string uuid);
+    LoadPdf(string uuid, string file_name, sequence<u8> bytes);
+    MarkPdfLoadingFailed(string uuid);
 };
 
 callback interface GlobalStateListener {
@@ -49,8 +44,6 @@ interface GlobalStore {
     void init();
     [Self=ByArc]
     void dispatch_action(GlobalAction action);
-    [Self=ByArc]
-    void dispatch_thunk(GlobalThunk thunk);
     void add_listener(string id, GlobalStateListener listener);
     void remove_listener(string id);
 };
@@ -67,13 +60,8 @@ interface BooksSideEffect {
 };
 
 [Enum]
-interface BooksThunk {
-    AddClicked();
-};
-
-[Enum]
 interface BooksAction {
-    BooksListUpdated(sequence<Book> books);
+    AddClicked();
 };
 
 callback interface BooksStateListener {
@@ -85,8 +73,6 @@ interface BooksStore {
     constructor(GlobalStore global_store);
     [Self=ByArc]
     void init();
-    [Self=ByArc]
-    void dispatch_thunk(BooksThunk thunk);
     [Self=ByArc]
     void dispatch_action(BooksAction action);
     void add_listener(string id, BooksStateListener listener);

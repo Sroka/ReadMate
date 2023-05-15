@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
-use crate::books_state::BooksAction::BooksListUpdated;
+use crate::books_state::BooksResult::BooksListUpdated;
 use crate::global_state::{Book, GlobalState, GlobalStateListener, GlobalStore, PdfLoadingState};
 
 #[derive(Clone)]
@@ -15,11 +15,11 @@ pub enum BooksSideEffect {
     OpenFilePicker,
 }
 
-pub enum BooksThunk {
+pub enum BooksAction {
     AddClicked,
 }
 
-pub enum BooksAction {
+pub enum BooksResult {
     BooksListUpdated { books: Vec<Book> },
 }
 
@@ -62,22 +62,22 @@ impl BooksStore {
         self.listeners.lock().unwrap().remove(&id);
     }
 
-    pub fn dispatch_thunk(self: Arc<Self>, thunk: BooksThunk) {
-        match thunk {
-            BooksThunk::AddClicked =>  self.dispatch_side_effect(BooksSideEffect::OpenFilePicker)
+    pub fn dispatch_action(self: Arc<Self>, action: BooksAction) {
+        match action {
+            BooksAction::AddClicked =>  self.dispatch_side_effect(BooksSideEffect::OpenFilePicker)
         }
     }
 
-    pub fn dispatch_action(self: Arc<Self>, action: BooksAction) {
+    pub fn process_result(self: Arc<Self>, result: BooksResult) {
         let mut state = self.state.lock().unwrap();
-        let new_state = Self::reduce(state.clone(), action);
+        let new_state = Self::reduce(state.clone(), result);
         *state = new_state;
         for listener in self.listeners.lock().unwrap().values() {
             listener.new_state(state.clone())
         }
     }
 
-    fn reduce(state: BooksState, action: BooksAction) -> BooksState {
+    fn reduce(state: BooksState, action: BooksResult) -> BooksState {
         match action {
             BooksListUpdated { books: pdfs } => {
                 let mut new_state = state.clone();
@@ -103,11 +103,11 @@ impl Drop for BooksStore {
 impl GlobalStateListener for Arc<BooksStore> {
     fn new_state(&self, state: GlobalState) {
         let Some(last_global_state) = &self.last_global_state  else {
-            self.clone().dispatch_action(BooksListUpdated { books: state.books.clone() });
+            self.clone().process_result(BooksListUpdated { books: state.books.clone() });
             return;
         };
         if last_global_state.books != state.books {
-            self.clone().dispatch_action(BooksListUpdated { books: state.books.clone() });
+            self.clone().process_result(BooksListUpdated { books: state.books.clone() });
         }
     }
 }
