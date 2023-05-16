@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use crate::books_state::BooksResult::BooksListUpdated;
-use crate::global_state::{Book, GlobalState, GlobalStateListener, GlobalStore, PdfLoadingState};
+use crate::global_state::{Book, GlobalAction, GlobalState, GlobalStateListener, GlobalStore, PdfLoadingState};
 
 #[derive(Clone)]
 pub struct BooksState {
@@ -17,6 +17,9 @@ pub enum BooksSideEffect {
 
 pub enum BooksAction {
     AddClicked,
+    MarkPdfLoading { uuid: String },
+    LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
+    MarkPdfLoadingFailed { uuid: String },
 }
 
 pub enum BooksResult {
@@ -64,7 +67,22 @@ impl BooksStore {
 
     pub fn dispatch_action(self: Arc<Self>, action: BooksAction) {
         match action {
-            BooksAction::AddClicked =>  self.dispatch_side_effect(BooksSideEffect::OpenFilePicker)
+            BooksAction::AddClicked => self.dispatch_side_effect(BooksSideEffect::OpenFilePicker),
+            BooksAction::MarkPdfLoading { uuid } => self.global_store
+                .lock()
+                .unwrap()
+                .clone()
+                .dispatch_action(GlobalAction::MarkPdfLoading { uuid }),
+            BooksAction::LoadPdf { uuid, file_name, bytes } => self.global_store
+                .lock()
+                .unwrap()
+                .clone()
+                .dispatch_action(GlobalAction::LoadPdf { uuid, file_name, bytes }),
+            BooksAction::MarkPdfLoadingFailed { uuid } => self.global_store
+                .lock()
+                .unwrap()
+                .clone()
+                .dispatch_action(GlobalAction::MarkPdfLoadingFailed { uuid }),
         }
     }
 
@@ -87,7 +105,7 @@ impl BooksStore {
         }
     }
 
-    fn dispatch_side_effect(&self, side_effect:  BooksSideEffect) {
+    fn dispatch_side_effect(&self, side_effect: BooksSideEffect) {
         for listener in self.listeners.lock().unwrap().values() {
             listener.new_side_effect(side_effect.clone());
         }

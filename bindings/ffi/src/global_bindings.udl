@@ -62,6 +62,9 @@ interface BooksSideEffect {
 [Enum]
 interface BooksAction {
     AddClicked();
+    MarkPdfLoading(string uuid);
+    LoadPdf(string uuid, string file_name, sequence<u8> bytes);
+    MarkPdfLoadingFailed(string uuid);
 };
 
 callback interface BooksStateListener {

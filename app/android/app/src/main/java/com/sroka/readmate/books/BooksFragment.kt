@@ -1,7 +1,6 @@
 package com.sroka.readmate.books
 
 import android.os.Bundle
-import android.os.Looper
 import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
@@ -22,8 +21,6 @@ import uniffi.global_bindings.BooksSideEffect
 import uniffi.global_bindings.BooksState
 import uniffi.global_bindings.BooksStateListener
 import uniffi.global_bindings.BooksStore
-import uniffi.global_bindings.GlobalAction
-import uniffi.global_bindings.GlobalStore
 import uniffi.global_bindings.generatePdfUuid
 
 
@@ -33,7 +30,6 @@ import uniffi.global_bindings.generatePdfUuid
 class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
 
     private val booksStore: BooksStore by inject()
-    private val globalStore: GlobalStore by inject()
 
     private var emptyLibraryText: TextView? = null
     private var content: RecyclerView? = null
@@ -44,7 +40,7 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
         uri?.let { existingUri ->
             thread(true) {
                 val pdfUuid = generatePdfUuid()
-                view?.post { globalStore.dispatchAction(GlobalAction.MarkPdfLoading(uuid = pdfUuid)) }
+                view?.post { booksStore.dispatchAction(BooksAction.MarkPdfLoading(uuid = pdfUuid)) }
                 val fileName = activity
                     ?.contentResolver
                     ?.query(existingUri, null, null, null, null)
@@ -65,9 +61,9 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
                     ?.openInputStream(existingUri)
                     ?.use { it.readBytes() }
                 if (bytes != null) {
-                    globalStore.dispatchAction(GlobalAction.LoadPdf(pdfUuid, fileName, bytes.toUByteArray().asList()))
+                    booksStore.dispatchAction(BooksAction.LoadPdf(pdfUuid, fileName, bytes.toUByteArray().asList()))
                 } else {
-                    globalStore.dispatchAction(GlobalAction.MarkPdfLoadingFailed(uuid = pdfUuid))
+                    booksStore.dispatchAction(BooksAction.MarkPdfLoadingFailed(uuid = pdfUuid))
                 }
             }
         }
