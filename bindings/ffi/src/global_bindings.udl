@@ -1,6 +1,11 @@
+
+//UTILS
+
 namespace global_bindings {
     string generate_pdf_uuid();
 };
+
+// DOMAIN DATA
 
 dictionary Book {
     string uuid;
@@ -21,6 +26,9 @@ interface PdfLoadingState {
     ValidPdf(string title, string author, Bitmap? thumbnail);
     ErrorPdf();
 };
+
+
+// GLOBAL STORE
 
 dictionary GlobalState {
     string some_text;
@@ -48,6 +56,7 @@ interface GlobalStore {
     void remove_listener(string id);
 };
 
+// BOOKS STORE
 
 dictionary BooksState {
     string some_text;
@@ -79,5 +88,30 @@ interface BooksStore {
     [Self=ByArc]
     void dispatch_action(BooksAction action);
     void add_listener(string id, BooksStateListener listener);
+    void remove_listener(string id);
+};
+
+// PAGES STORE
+
+dictionary PagesState {
+    sequence<string> pages;
+};
+
+[Enum]
+interface PagesAction {
+    LoadPages(i32 range_start, i32 range_end);
+};
+
+callback interface PagesStateListener {
+    void new_state(PagesState state);
+};
+
+interface PagesStore {
+    constructor(GlobalStore global_store);
+    [Self=ByArc]
+    void init();
+    [Self=ByArc]
+    void dispatch_action(PagesAction action);
+    void add_listener(string id, PagesStateListener listener);
     void remove_listener(string id);
 };

@@ -2,12 +2,13 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use pdfium_render::metadata::PdfDocumentMetadataTagType;
 use pdfium_render::prelude::*;
-use crate::global_state::{Bitmap, GlobalResult};
+use crate::global_state::GlobalResult;
 
 use uuid::Uuid;
+use crate::domain::Bitmap;
 
 pub fn generate_pdf_uuid() -> String {
     Uuid::new_v4().to_string()

@@ -7,8 +7,9 @@ use android_logger::Config;
 
 use std::thread;
 use std::thread::JoinHandle;
-use anyhow::{Result, Context};
-use crate::pdfium_manager::{PdfiumManager, PdfiumAction};
+use anyhow::{Context, Result};
+use crate::domain::{Bitmap, Book, PdfLoadingState};
+use crate::pdfium_manager::{PdfiumAction, PdfiumManager};
 
 
 #[derive(Clone)]
@@ -17,87 +18,10 @@ pub struct GlobalState {
     pub books: Vec<Book>,
 }
 
-#[derive(Clone, PartialEq)]
-pub struct Book {
-    pub uuid: String,
-    pub thumbnail: Option<Arc<Bitmap>>,
-    pub loading_state: PdfLoadingState,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum PdfLoadingState {
-    LoadingPdf,
-    ValidPdf {
-        title: String,
-        author: String,
-        thumbnail: Option<Arc<Bitmap>>,
-    },
-    ErrorPdf,
-}
-
 pub enum GlobalAction {
     MarkPdfLoading { uuid: String },
     LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
     MarkPdfLoadingFailed { uuid: String },
-}
-
-pub struct Bitmap {
-    pub width: i32,
-    pub height: i32,
-    pub uid: String,
-    pub pixels: Vec<u32>,
-}
-
-impl Bitmap {
-    pub fn new(
-        width: i32,
-        height: i32,
-        uid: String,
-        pixels: Vec<u32>,
-    ) -> Arc<Bitmap> {
-        Arc::new(
-            Bitmap {
-                width,
-                height,
-                uid,
-                pixels,
-            }
-        )
-    }
-
-    pub fn width(&self) -> i32 {
-        self.width
-    }
-
-    pub fn height(&self) -> i32 {
-        self.height
-    }
-
-    pub fn uid(&self) -> String {
-        self.uid.clone()
-    }
-
-    pub fn copy_pixels(&self) -> Vec<u32> {
-        self.pixels.clone()
-    }
-}
-
-impl PartialEq for Bitmap {
-    fn eq(&self, other: &Self) -> bool {
-        self.uid == other.uid
-    }
-}
-
-impl Clone for Bitmap {
-    fn clone(&self) -> Self {
-        info!("ERROR - cloned bitmap");
-        Bitmap {
-            width: self.width,
-            height: self.height,
-            uid: self.uid.clone(),
-            pixels: vec![],
-        }
-    }
 }
 
 pub enum GlobalResult {
