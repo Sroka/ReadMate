@@ -8,7 +8,7 @@ use android_logger::Config;
 use std::thread;
 use std::thread::JoinHandle;
 use anyhow::{Context, Result};
-use crate::domain::{Bitmap, Book, PdfLoadingState};
+use crate::domain::{Bitmap, Book, Page, PdfLoadingState};
 use crate::pdfium_manager::{PdfiumAction, PdfiumManager};
 
 
@@ -16,6 +16,8 @@ use crate::pdfium_manager::{PdfiumAction, PdfiumManager};
 pub struct GlobalState {
     pub some_text: String,
     pub books: Vec<Book>,
+    pub current_book: Option<Book>,
+    pub current_book_pages: Vec<Arc<Page>>,
 }
 
 pub enum GlobalAction {
@@ -28,10 +30,11 @@ pub enum GlobalResult {
     PdfLoading { uuid: String },
     PdfLoadingFailed { uuid: String },
     PdfLoaded {
-        uuid: String,
+        id: String,
         title: String,
         author: String,
         thumbnail: Option<Arc<Bitmap>>,
+        page_count: i32,
     },
 }
 
@@ -52,7 +55,12 @@ pub struct GlobalStore {
 
 impl GlobalStore {
     pub fn new() -> Self {
-        let initial_state = GlobalState { some_text: "initial_text".to_string(), books: Vec::new() };
+        let initial_state = GlobalState {
+            some_text: "initial_text".to_string(),
+            books: Vec::new(),
+            current_book: None,
+            current_book_pages: vec![],
+        };
         android_logger::init_once(Config::default().with_max_level(LevelFilter::Trace));
         Self {
             state: Mutex::new(initial_state),
@@ -122,16 +130,21 @@ impl GlobalStore {
                 }
                 new_state
             }
-            GlobalResult::PdfLoaded { title, author, uuid, thumbnail } => {
+            GlobalResult::PdfLoaded { id, title, author, thumbnail, page_count } => {
                 let mut new_state = state.clone();
                 for book in &mut new_state.books {
-                    if uuid == book.uuid {
+                    if id == book.uuid {
                         book.thumbnail = thumbnail.clone();
                         book.loading_state = PdfLoadingState::ValidPdf {
                             title: title.clone(),
                             author: author.clone(),
                             thumbnail: thumbnail.clone(),
-                        }
+                            page_count,
+                        };
+                        new_state.current_book = Some(book.clone());
+                        new_state.current_book_pages = (0..page_count)
+                            .map(|index| { Arc::new(Page { index, image: None }) })
+                            .collect();
                     }
                 }
                 new_state

@@ -8,12 +8,32 @@ pub struct Book {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct Page {
+    pub index: i32,
+    pub image: Option<Arc<Bitmap>>,
+}
+
+impl Page {
+    pub fn index(&self) -> i32 {
+        self.index
+    }
+
+    pub fn image(&self) -> Option<Arc<Bitmap>> {
+        match &self.image {
+            None => None,
+            Some(image) => Some(Arc::clone(image)),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
 pub enum PdfLoadingState {
     LoadingPdf,
     ValidPdf {
         title: String,
         author: String,
         thumbnail: Option<Arc<Bitmap>>,
+        page_count: i32,
     },
     ErrorPdf,
 }

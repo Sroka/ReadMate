@@ -1,20 +1,21 @@
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
-use crate::domain::{Book, PdfLoadingState};
+use crate::domain::{Book, Page, PdfLoadingState};
 use crate::global_state::{GlobalAction, GlobalState, GlobalStateListener, GlobalStore};
 
 #[derive(Clone)]
 pub struct PagesState {
-    pub pages: Vec<String>,
+    pub current_book: Option<Book>,
+    pub current_book_pages: Vec<Arc<Page>>,
 }
 
 pub enum PagesAction {
-    LoadPages { range_start: i32, range_end: i32 },
+    CurrentPage { page_index: i32 },
 }
 
 pub enum PagesResult {
-    PagesListUpdated { pages: Vec<String> },
+    PagesListUpdated { pages: Vec<Arc<Page>> },
 }
 
 pub trait PagesStateListener: Send + Sync {
@@ -33,7 +34,7 @@ pub struct PagesStore {
 
 impl PagesStore {
     pub fn new(global_store: Arc<GlobalStore>) -> Self {
-        let initial_state = PagesState { pages: Vec::new() };
+        let initial_state = PagesState { current_book: None, current_book_pages: vec![] };
         Self {
             global_store: Mutex::new(global_store),
             state: Mutex::new(initial_state),
@@ -57,7 +58,11 @@ impl PagesStore {
 
     pub fn dispatch_action(self: Arc<Self>, action: PagesAction) {
         match action {
-            PagesAction::LoadPages { range_start, range_end } => {}
+            PagesAction::CurrentPage { page_index } => {
+                // let pages = self.state.lock().unwrap().pages;
+                // pages
+
+            }
         }
     }
 
@@ -74,7 +79,7 @@ impl PagesStore {
         match action {
             PagesResult::PagesListUpdated { pages } => {
                 let mut new_state = state.clone();
-                // new_state.Pages = pdfs;
+                new_state.current_book_pages = pages;
                 new_state
             }
         }
@@ -89,12 +94,12 @@ impl Drop for PagesStore {
 
 impl GlobalStateListener for Arc<PagesStore> {
     fn new_state(&self, new_global_state: GlobalState) {
-        // let Some(last_global_state) = &self.last_global_state  else {
-        //     self.clone().process_result(PagesResult::PagesListUpdated { pages: new_global_state.Pages.clone() });
-        //     return;
-        // };
-        // if last_global_state.Pages != new_global_state.Pages {
-        //     self.clone().process_result(PagesResult::PagesListUpdated { pages: new_global_state.Pages.clone() });
-        // }
+        let Some(last_global_state) = &self.last_global_state  else {
+            self.clone().process_result(PagesResult::PagesListUpdated { pages: new_global_state.current_book_pages.clone() });
+            return;
+        };
+        if last_global_state.current_book_pages != new_global_state.current_book_pages {
+            self.clone().process_result(PagesResult::PagesListUpdated { pages: new_global_state.current_book_pages.clone() });
+        }
     }
 }

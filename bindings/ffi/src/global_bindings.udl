@@ -13,6 +13,11 @@ dictionary Book {
     PdfLoadingState loading_state;
 };
 
+interface Page {
+    i32     index();
+    Bitmap? image();
+};
+
 interface Bitmap {
     i32 width();
     i32 height();
@@ -23,7 +28,7 @@ interface Bitmap {
 [Enum]
 interface PdfLoadingState {
     LoadingPdf();
-    ValidPdf(string title, string author, Bitmap? thumbnail);
+    ValidPdf(string title, string author, Bitmap? thumbnail, i32 page_count);
     ErrorPdf();
 };
 
@@ -33,6 +38,8 @@ interface PdfLoadingState {
 dictionary GlobalState {
     string some_text;
     sequence<Book> books;
+    Book? current_book;
+    sequence<Page> current_book_pages;
 };
 
 [Enum]
@@ -94,12 +101,13 @@ interface BooksStore {
 // PAGES STORE
 
 dictionary PagesState {
-    sequence<string> pages;
+    Book? current_book;
+    sequence<Page> current_book_pages;
 };
 
 [Enum]
 interface PagesAction {
-    LoadPages(i32 range_start, i32 range_end);
+    CurrentPage(i32 page_index);
 };
 
 callback interface PagesStateListener {

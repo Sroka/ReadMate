@@ -13,6 +13,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.sroka.readmate.IdentityId
 import com.sroka.readmate.R
 import com.sroka.readmate.assureMainThread
+import com.sroka.readmate.pages.PagesFragment
 import kotlin.concurrent.thread
 import org.koin.android.ext.android.inject
 import org.koin.androidx.scope.ScopeFragment
@@ -23,11 +24,7 @@ import uniffi.global_bindings.BooksStateListener
 import uniffi.global_bindings.BooksStore
 import uniffi.global_bindings.generatePdfUuid
 
-
-/**
- * A fragment representing a list of Items.
- */
-class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
+class BooksFragment : ScopeFragment(), BooksStateListener, BookClickedListener, IdentityId {
 
     private val booksStore: BooksStore by inject()
 
@@ -80,13 +77,19 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
         val gridLayoutManager = GridLayoutManager(context, 2)
         content?.layoutManager = gridLayoutManager
         contentAdapter = BooksRecyclerViewAdapter()
+        contentAdapter?.listener = this
         content?.adapter = contentAdapter
         addButton?.setOnClickListener { booksStore.dispatchAction(BooksAction.AddClicked) }
-        booksStore.addListener(getIdentityId(), this)
         return view
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        booksStore.addListener(getIdentityId(), this)
+    }
+
     override fun onDestroyView() {
+        contentAdapter?.listener = null
         booksStore.removeListener(getIdentityId())
         addButton = null
         content = null
@@ -112,4 +115,10 @@ class BooksFragment : ScopeFragment(), BooksStateListener, IdentityId {
     }
 
     private fun openFilePicker() = getContent.launch("application/pdf")
+    override fun onBookClicked(bookId: String) {
+        parentFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragment_container, PagesFragment.newInstance(bookId))
+            .commit()
+    }
 }

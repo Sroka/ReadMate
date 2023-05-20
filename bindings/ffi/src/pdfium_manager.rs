@@ -53,15 +53,17 @@ impl PdfiumManager {
                                         } else {
                                             title
                                         };
+                                        let page_count: i32 =  pdf.pages().len().into();
                                         let thumbnail = get_thumbnail(pdf).ok();
                                         global_action_sender
                                             .lock()
                                             .unwrap()
                                             .send(GlobalResult::PdfLoaded {
-                                                uuid: uuid.clone(),
+                                                id: uuid.clone(),
                                                 title: display_title,
                                                 author,
                                                 thumbnail,
+                                                page_count,
                                             })
                                             .unwrap();
                                     }
@@ -100,7 +102,7 @@ fn get_thumbnail(pdf: PdfDocument) -> Result<Arc<Bitmap>> {
             let r = u32::from(pixel[0]) << 16;
             let g = u32::from(pixel[1]) << 8;
             let b = u32::from(pixel[2]);
-            let argb: u32 = a |r | g | b;
+            let argb: u32 = a | r | g | b;
             argb
         })
         .collect();
