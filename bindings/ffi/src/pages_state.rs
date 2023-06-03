@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
-use crate::domain::{Book, Page, PdfLoadingState};
+use crate::domain::{Book, Page};
 use crate::global_state::{GlobalAction, GlobalState, GlobalStateListener, GlobalStore};
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub struct PagesState {
 }
 
 pub enum PagesAction {
-    CurrentPage { page_index: i32 },
+    LoadPage { page_index: i32 },
 }
 
 pub enum PagesResult {
@@ -58,10 +58,12 @@ impl PagesStore {
 
     pub fn dispatch_action(self: Arc<Self>, action: PagesAction) {
         match action {
-            PagesAction::CurrentPage { page_index } => {
-                // let pages = self.state.lock().unwrap().pages;
-                // pages
-
+            PagesAction::LoadPage { page_index } => {
+                self.global_store
+                    .lock()
+                    .unwrap()
+                    .clone()
+                    .dispatch_action(GlobalAction::LoadPage { page_index })
             }
         }
     }

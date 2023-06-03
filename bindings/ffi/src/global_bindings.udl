@@ -47,6 +47,7 @@ interface GlobalAction {
     MarkPdfLoading(string uuid);
     LoadPdf(string uuid, string file_name, sequence<u8> bytes);
     MarkPdfLoadingFailed(string uuid);
+    LoadPage(i32 page_index);
 };
 
 callback interface GlobalStateListener {
@@ -107,7 +108,7 @@ dictionary PagesState {
 
 [Enum]
 interface PagesAction {
-    CurrentPage(i32 page_index);
+    LoadPage(i32 page_index);
 };
 
 callback interface PagesStateListener {

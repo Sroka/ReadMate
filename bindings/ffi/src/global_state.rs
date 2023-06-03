@@ -2,8 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use pdfium_render::prelude::*;
-use log::LevelFilter;
+
+#[cfg(target_os = "android")]
 use android_logger::Config;
+#[cfg(target_os = "android")]
+use log::LevelFilter;
 
 use std::thread;
 use std::thread::JoinHandle;
@@ -24,6 +27,7 @@ pub enum GlobalAction {
     MarkPdfLoading { uuid: String },
     LoadPdf { uuid: String, file_name: String, bytes: Vec<u8> },
     MarkPdfLoadingFailed { uuid: String },
+    LoadPage { page_index: i32 },
 }
 
 pub enum GlobalResult {
@@ -35,6 +39,9 @@ pub enum GlobalResult {
         author: String,
         thumbnail: Option<Arc<Bitmap>>,
         page_count: i32,
+    },
+    PagesLoaded {
+        pages: Vec<Arc<Page>>,
     },
 }
 
@@ -61,6 +68,7 @@ impl GlobalStore {
             current_book: None,
             current_book_pages: vec![],
         };
+        #[cfg(target_os = "android")]
         android_logger::init_once(Config::default().with_max_level(LevelFilter::Trace));
         Self {
             state: Mutex::new(initial_state),
@@ -93,9 +101,13 @@ impl GlobalStore {
             GlobalAction::MarkPdfLoading { uuid } => self.process_result(GlobalResult::PdfLoading { uuid }),
             GlobalAction::LoadPdf { uuid, file_name, bytes } => match self.load_pdf(uuid, file_name, bytes) {
                 Ok(_) => {}
-                Err(error) => { error!("dispatch_thunk error - {error}") }
+                Err(error) => { error!("GlobalAction::LoadPdf error - {error}") }
             }
             GlobalAction::MarkPdfLoadingFailed { uuid } => self.process_result(GlobalResult::PdfLoadingFailed { uuid }),
+            GlobalAction::LoadPage { page_index } => match self.load_page(page_index) {
+                Ok(_) => {}
+                Err(error) => { error!("GlobalAction::LoadPage error - {error}") }
+            }
         };
     }
 
@@ -149,6 +161,14 @@ impl GlobalStore {
                 }
                 new_state
             }
+            GlobalResult::PagesLoaded { pages } => {
+                let mut new_state = state.clone();
+                for page in pages {
+                    let index = page.index as usize;
+                    new_state.current_book_pages[index] = page
+                }
+                new_state
+            }
         }
     }
 
@@ -173,6 +193,20 @@ impl GlobalStore {
         let pdfium_manager = guard.as_ref().context("No Pdfium Manager")?;
         let pdfium_action_sender = pdfium_manager.pdfium_action_sender.lock().unwrap();
         pdfium_action_sender.send(PdfiumAction::LoadPdf { uuid, file_name, bytes })?;
+        Ok(())
+    }
+
+    fn load_page(&self, page_index: i32) -> Result<()> {
+        self.pdfium_manager
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .pdfium_action_sender
+            .lock()
+            .unwrap()
+            .send(PdfiumAction::PageLoadRequested { page_index })
+            .unwrap();
         Ok(())
     }
 }

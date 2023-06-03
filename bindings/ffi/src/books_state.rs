@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::{Arc, Mutex};
 use crate::books_state::BooksResult::BooksListUpdated;
-use crate::domain::{Book, PdfLoadingState};
+use crate::domain::{Book};
 use crate::global_state::{GlobalAction, GlobalState, GlobalStateListener, GlobalStore};
 
 #[derive(Clone)]

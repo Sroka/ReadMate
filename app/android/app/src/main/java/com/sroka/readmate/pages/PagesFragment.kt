@@ -7,11 +7,13 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.sroka.readmate.IdentityId
 import com.sroka.readmate.R
 import com.sroka.readmate.assureMainThread
 import org.koin.android.ext.android.inject
 import org.koin.androidx.scope.ScopeFragment
+import uniffi.global_bindings.PagesAction
 import uniffi.global_bindings.PagesState
 import uniffi.global_bindings.PagesStateListener
 import uniffi.global_bindings.PagesStore
@@ -24,7 +26,7 @@ class PagesFragment : ScopeFragment(), PagesStateListener, IdentityId {
 
     companion object {
 
-        private val BOOK_ID_KEY = "BOOK_ID_KEY"
+        private const val BOOK_ID_KEY = "BOOK_ID_KEY"
         fun newInstance(bookId: String): PagesFragment {
             val args = Bundle().apply { putString(BOOK_ID_KEY, bookId) }
             val fragment = PagesFragment()
@@ -54,6 +56,15 @@ class PagesFragment : ScopeFragment(), PagesStateListener, IdentityId {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         pagesStore.addListener(getIdentityId(), this)
+        content?.addOnScrollListener(object : OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                (content?.layoutManager as? LinearLayoutManager)?.findLastVisibleItemPosition()?.let {
+                    println("onScrollStateChanged - newState: $newState, position: $it")
+                    pagesStore.dispatchAction(PagesAction.LoadPage(it))
+                }
+            }
+        })
     }
 
     override fun onDestroyView() {
@@ -67,7 +78,6 @@ class PagesFragment : ScopeFragment(), PagesStateListener, IdentityId {
 
     private fun render(state: PagesState) {
         println("New pages state: ${Thread.currentThread().name} $state")
-        println("New pages state: ${state.currentBookPages.size}")
         contentAdapter?.submitList(state.currentBookPages) {
             state.destroy()
         }
